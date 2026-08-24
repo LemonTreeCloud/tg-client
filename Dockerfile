@@ -23,16 +23,11 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 FROM alpine:3.24
 
 RUN apk add --no-cache ca-certificates tzdata \
-    && addgroup -S -g 10001 tgclient \
-    && adduser -S -D -H -u 10001 -G tgclient tgclient \
-    && mkdir -p /data \
-    && chown tgclient:tgclient /data
+    && mkdir -p /data
 
 WORKDIR /
 
-COPY --from=build --chown=tgclient:tgclient /out/tg-client /usr/local/bin/tg-client
-
-USER tgclient:tgclient
+COPY --from=build /out/tg-client /usr/local/bin/tg-client
 
 VOLUME ["/data"]
 EXPOSE 8080
