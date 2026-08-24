@@ -1,0 +1,56 @@
+log:
+  level: info
+
+http:
+  host: 127.0.0.1
+  port: 8080
+  api_keys:
+    - ${TG_CLIENT_API_KEY}
+
+telegram:
+  client_id: 123456
+  client_hash: ${TELEGRAM_CLIENT_HASH}
+  phone_number: ${TELEGRAM_PHONE_NUMBER}
+  # Only needed when the account has Telegram two-step verification enabled.
+  two_factor_password: ${TELEGRAM_2FA_PASSWORD}
+  session_path: data/session.json
+  keep_online: true
+
+# The shipped default example is Singapore time. If this field is absent or
+# invalid, tg-client deliberately falls back to the operating-system timezone.
+timezone: Asia/Singapore
+
+auto_forward_rules:
+  - id: example-account-forward
+    source_chat_id: -1001234567890
+    target_chat_id: -1009876543210
+    forward_via: account
+    # An omitted/empty match list forwards every incoming message in the source.
+    match:
+      # Conditions are ORed. Within one condition, sender and keyword must both
+      # match. Any one keyword in keywords is sufficient.
+      - sender_user_id: 123456789
+        keywords: ["alert", "warning"]
+        case_sensitive: false
+
+  - id: example-bot-forward
+    source_chat_id: -1001234567890
+    target_chat_id: -1009876543210
+    forward_via: bot
+    bot_token: ${TELEGRAM_BOT_TOKEN}
+
+scheduled_message_rules:
+  - id: daily-fixed
+    target_chat_id: -1009876543210
+    message: "Daily fixed-time message"
+    time: "09:00:00"
+
+  - id: daily-random-window
+    target_chat_id: -1009876543210
+    message: "Daily random-window message"
+    time_range:
+      start: "14:00:00"
+      end: "16:30:00"
+
+scheduler:
+  state_path: data/scheduler-state.json

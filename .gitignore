@@ -1,0 +1,6 @@
+/tg-client
+/data/
+/config.yaml
+/config.test.yaml
+*.log
+README.md
