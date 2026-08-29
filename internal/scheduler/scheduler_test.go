@@ -1,8 +1,11 @@
 package scheduler
 
 import (
+	"fmt"
 	"testing"
 	"time"
+
+	"github.com/gotd/td/tgerr"
 
 	"tg-client/internal/config"
 )
@@ -51,5 +54,17 @@ func TestCalculateOvernightWindow(t *testing.T) {
 	}
 	if got.cycle != "2026-08-24" || !got.at.After(now) {
 		t.Fatalf("got cycle %s at %v", got.cycle, got.at)
+	}
+}
+
+func TestPermanentRPCError(t *testing.T) {
+	if !isPermanentRPCError(fmt.Errorf("send failed: %w", tgerr.New(400, "CHANNEL_INVALID"))) {
+		t.Fatal("CHANNEL_INVALID should not be retried every minute")
+	}
+	if isPermanentRPCError(fmt.Errorf("send failed: %w", tgerr.New(500, "INTERNAL"))) {
+		t.Fatal("server errors should remain retryable")
+	}
+	if isPermanentRPCError(fmt.Errorf("send failed: %w", tgerr.New(420, "FLOOD_WAIT_60"))) {
+		t.Fatal("flood waits should remain retryable")
 	}
 }

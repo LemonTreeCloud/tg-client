@@ -11,6 +11,7 @@ import (
 
 	"github.com/gotd/td/telegram/query"
 	"github.com/gotd/td/tg"
+	"github.com/gotd/td/tgerr"
 )
 
 const (
@@ -176,12 +177,29 @@ func (s *Service) sendRichMessage(ctx context.Context, chatID int64, text string
 	if err != nil {
 		return err
 	}
-	_, err = api.MessagesSendMessage(ctx, &tg.MessagesSendMessageRequest{
-		Peer:     peer,
-		Message:  text,
-		RandomID: randomID,
-		Entities: entities,
-	})
+	send := func(target tg.InputPeerClass) error {
+		_, sendErr := api.MessagesSendMessage(ctx, &tg.MessagesSendMessageRequest{
+			Peer:     target,
+			Message:  text,
+			RandomID: randomID,
+			Entities: entities,
+		})
+		return sendErr
+	}
+	err = send(peer)
+	if tgerr.Is(err, tg.ErrChannelInvalid) {
+		// The cached entity may have come from a Telegram "min" update whose
+		// access hash is unsuitable for sendMessage. Drop it, load the full
+		// entity from dialogs, and retry the idempotent random ID exactly once.
+		originalErr := err
+		s.logger.Warn("Telegram rejected cached channel peer; refreshing dialogs and retrying once", "chat_id", chatID)
+		s.peers.Delete(chatID)
+		peer, err = s.resolveInputPeer(ctx, chatID)
+		if err != nil {
+			return fmt.Errorf("refresh peer for chat %d after CHANNEL_INVALID: %w", chatID, errors.Join(originalErr, err))
+		}
+		err = send(peer)
+	}
 	if err != nil {
 		return fmt.Errorf("send message to chat %d: %w", chatID, err)
 	}

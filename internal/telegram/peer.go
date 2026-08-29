@@ -40,6 +40,29 @@ func (s *PeerStore) Update(users map[int64]*tg.User, chats map[int64]*tg.Chat, c
 		if user == nil {
 			continue
 		}
+		// Telegram update batches may contain "min" users. Their access hash is
+		// not valid for normal RPCs. Never let one replace a full peer already
+		// learned from dialogs; if it is the first observation, keep only its
+		// display metadata so InputPeer forces a dialog refresh before use.
+		if user.Min {
+			if _, exists := s.peers[user.ID]; exists {
+				continue
+			}
+			username, _ := user.GetUsername()
+			kind := "private"
+			if user.Bot {
+				kind = "bot"
+			}
+			s.peers[user.ID] = PeerInfo{
+				ChatID:   user.ID,
+				PeerID:   user.ID,
+				Type:     kind,
+				Name:     userDisplayName(user),
+				Username: username,
+				IsBot:    user.Bot,
+			}
+			continue
+		}
 		username, _ := user.GetUsername()
 		kind := "private"
 		if user.Bot {
@@ -73,6 +96,27 @@ func (s *PeerStore) Update(users map[int64]*tg.User, chats map[int64]*tg.Chat, c
 			continue
 		}
 		chatID := ChannelIDToChatID(channel.ID)
+		// A min channel hash works only for a narrow set of operations and is
+		// rejected by messages.sendMessage with CHANNEL_INVALID. Supergroups
+		// are channels with Megagroup=true, so the same rule applies to both.
+		if channel.Min {
+			if _, exists := s.peers[chatID]; exists {
+				continue
+			}
+			kind := "channel"
+			if channel.Megagroup {
+				kind = "supergroup"
+			}
+			username, _ := channel.GetUsername()
+			s.peers[chatID] = PeerInfo{
+				ChatID:   chatID,
+				PeerID:   channel.ID,
+				Type:     kind,
+				Name:     channel.Title,
+				Username: username,
+			}
+			continue
+		}
 		kind := "channel"
 		if channel.Megagroup {
 			kind = "supergroup"
@@ -102,6 +146,12 @@ func (s *PeerStore) InputPeer(chatID int64) (tg.InputPeerClass, bool) {
 		return nil, false
 	}
 	return peer.inputPeer, true
+}
+
+func (s *PeerStore) Delete(chatID int64) {
+	s.mu.Lock()
+	delete(s.peers, chatID)
+	s.mu.Unlock()
 }
 
 func (s *PeerStore) All() []PeerInfo {

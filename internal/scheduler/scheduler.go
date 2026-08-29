@@ -14,6 +14,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gotd/td/tgerr"
+
 	"tg-client/internal/config"
 )
 
@@ -104,11 +106,34 @@ func (s *Scheduler) runRule(ctx context.Context, rule config.ScheduledMessageRul
 			if errors.Is(err, context.Canceled) || ctx.Err() != nil {
 				return
 			}
+			if isPermanentRPCError(err) {
+				s.logger.Error("failed to send scheduled message; not retrying this daily cycle", "rule_id", rule.ID, "target_chat_id", rule.TargetChatID, "error", err)
+				// Wait past this cycle's window before planning again. Without this,
+				// a random-window rule would immediately choose another time in the
+				// same cycle after a permanent request error.
+				if !waitUntil(ctx, next.deadline.Add(time.Second)) {
+					return
+				}
+				break
+			}
 			s.logger.Error("failed to send scheduled message; retrying in one minute", "rule_id", rule.ID, "target_chat_id", rule.TargetChatID, "error", err)
 			if time.Now().In(s.loc).Add(time.Minute).After(next.deadline) || !waitUntil(ctx, time.Now().Add(time.Minute)) {
 				break
 			}
 		}
+	}
+}
+
+func isPermanentRPCError(err error) bool {
+	rpcErr, ok := tgerr.As(err)
+	if !ok {
+		return false
+	}
+	switch rpcErr.Code {
+	case 400, 401, 403, 404, 406:
+		return true
+	default:
+		return false
 	}
 }
 
