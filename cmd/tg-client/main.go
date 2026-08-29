@@ -6,6 +6,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -29,7 +30,7 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	logger := newLogger(cfg.Log.Level)
+	logger := newLogger(os.Stdout, cfg.Log.Level, cfg.Location)
 	if cfg.TimezoneWarning != "" {
 		logger.Warn(cfg.TimezoneWarning)
 	}
@@ -70,14 +71,25 @@ func main() {
 	workers.Wait()
 }
 
-func newLogger(level string) *slog.Logger {
+func newLogger(output io.Writer, level string, location *time.Location) *slog.Logger {
 	levels := map[string]slog.Level{
 		"debug": slog.LevelDebug,
 		"info":  slog.LevelInfo,
 		"warn":  slog.LevelWarn,
 		"error": slog.LevelError,
 	}
-	handler := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: levels[strings.ToLower(level)]})
+	if location == nil {
+		location = time.Local
+	}
+	handler := slog.NewTextHandler(output, &slog.HandlerOptions{
+		Level: levels[strings.ToLower(level)],
+		ReplaceAttr: func(groups []string, attr slog.Attr) slog.Attr {
+			if len(groups) == 0 && attr.Key == slog.TimeKey && attr.Value.Kind() == slog.KindTime {
+				attr.Value = slog.TimeValue(attr.Value.Time().In(location))
+			}
+			return attr
+		},
+	})
 	return slog.New(handler)
 }
 
