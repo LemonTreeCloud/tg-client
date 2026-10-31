@@ -54,3 +54,30 @@ func TestBuildForwardMessagePreservesEntitiesAndAddsMetadata(t *testing.T) {
 		t.Fatalf("bad link entity: %#v", entities[1])
 	}
 }
+
+func TestRuleMatchesAnonymousAdmin(t *testing.T) {
+	rule := config.AutoForwardRule{Match: []config.MatchCondition{{AnonymousAdmin: true, Keywords: []string{"alert"}}}}
+	for _, tc := range []struct {
+		name   string
+		sender tg.PeerClass
+		peer   tg.PeerClass
+		text   string
+		post   bool
+		want   bool
+	}{
+		{"anonymous with keyword", &tg.PeerChannel{ChannelID: 123}, &tg.PeerChannel{ChannelID: 123}, "ALERT now", false, true},
+		{"anonymous without keyword", &tg.PeerChannel{ChannelID: 123}, &tg.PeerChannel{ChannelID: 123}, "hello", false, false},
+		{"ordinary user", &tg.PeerUser{UserID: 42}, &tg.PeerChannel{ChannelID: 123}, "alert", false, false},
+		{"other channel identity", &tg.PeerChannel{ChannelID: 456}, &tg.PeerChannel{ChannelID: 123}, "alert", false, false},
+		{"broadcast post", &tg.PeerChannel{ChannelID: 123}, &tg.PeerChannel{ChannelID: 123}, "alert", true, false},
+		{"missing sender", nil, &tg.PeerChannel{ChannelID: 123}, "alert", false, false},
+		{"missing peer", &tg.PeerChannel{ChannelID: 123}, nil, "alert", false, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			message := &tg.Message{FromID: tc.sender, PeerID: tc.peer, Message: tc.text, Post: tc.post}
+			if got := RuleMatches(rule, message); got != tc.want {
+				t.Fatalf("got %v, want %v", got, tc.want)
+			}
+		})
+	}
+}

@@ -55,9 +55,10 @@ type TelegramConfig struct {
 }
 
 type MatchCondition struct {
-	SenderUserID  int64    `yaml:"sender_user_id"`
-	Keywords      []string `yaml:"keywords"`
-	CaseSensitive bool     `yaml:"case_sensitive"`
+	AnonymousAdmin bool     `yaml:"anonymous_admin"`
+	SenderUserID   int64    `yaml:"sender_user_id"`
+	Keywords       []string `yaml:"keywords"`
+	CaseSensitive  bool     `yaml:"case_sensitive"`
 }
 
 type AutoForwardRule struct {
@@ -211,8 +212,11 @@ func (c *Config) validate() error {
 			errs = append(errs, fmt.Errorf("%s.bot_token is required when forward_via is bot", prefix))
 		}
 		for j, m := range r.Match {
-			if m.SenderUserID == 0 && len(m.Keywords) == 0 {
-				errs = append(errs, fmt.Errorf("%s.match[%d] must configure sender_user_id or keywords", prefix, j))
+			if m.AnonymousAdmin && m.SenderUserID != 0 {
+				errs = append(errs, fmt.Errorf("%s.match[%d] cannot combine anonymous_admin with sender_user_id", prefix, j))
+			}
+			if !m.AnonymousAdmin && m.SenderUserID == 0 && len(m.Keywords) == 0 {
+				errs = append(errs, fmt.Errorf("%s.match[%d] must configure anonymous_admin, sender_user_id or keywords", prefix, j))
 			}
 			for k, keyword := range m.Keywords {
 				if keyword == "" {

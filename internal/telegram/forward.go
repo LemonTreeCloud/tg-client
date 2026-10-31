@@ -21,6 +21,9 @@ func RuleMatches(rule config.AutoForwardRule, message *tg.Message) bool {
 	}
 	senderID := SenderUserID(message.FromID)
 	for _, condition := range rule.Match {
+		if condition.AnonymousAdmin && !isAnonymousAdminMessage(message) {
+			continue
+		}
 		if condition.SenderUserID != 0 && condition.SenderUserID != senderID {
 			continue
 		}
@@ -30,6 +33,14 @@ func RuleMatches(rule config.AutoForwardRule, message *tg.Message) bool {
 		return true
 	}
 	return false
+}
+
+// Anonymous group admins send as the destination supergroup itself. Other
+// channel identities and broadcast posts must not match this filter.
+func isAnonymousAdminMessage(message *tg.Message) bool {
+	sender, senderOK := message.FromID.(*tg.PeerChannel)
+	chat, chatOK := message.PeerID.(*tg.PeerChannel)
+	return !message.Post && senderOK && chatOK && sender != nil && chat != nil && sender.ChannelID == chat.ChannelID
 }
 
 func matchesAnyKeyword(message string, keywords []string, caseSensitive bool) bool {

@@ -33,6 +33,15 @@ auto_forward_rules:
         keywords: ["alert", "warning"]
         case_sensitive: false
 
+    # To require BOTH anonymous group admin identity and a keyword, replace
+    # the match list above with this (do not add it as a separate OR fallback):
+    # match:
+    #   - anonymous_admin: true
+    #     keywords: ["alert", "warning"]
+    #     case_sensitive: false
+    # anonymous_admin matches messages sent as the source group itself;
+    # it cannot be combined with sender_user_id in the same condition.
+
   - id: example-bot-forward
     source_chat_id: -1001234567890
     target_chat_id: -1009876543210
