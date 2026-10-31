@@ -35,8 +35,8 @@ func TestBuildForwardMessagePreservesEntitiesAndAddsMetadata(t *testing.T) {
 		ID:       99,
 		Message:  "😀bold",
 		Entities: []tg.MessageEntityClass{bold},
-		ReplyMarkup: &tg.ReplyInlineMarkup{Rows: []tg.KeyboardButtonRow{{
-			Buttons: []tg.KeyboardButtonClass{&tg.KeyboardButtonCallback{Text: "run", Data: []byte("id=7")}},
+		ReplyMarkup: &tg.ReplyInlineMarkup{Rows: []tg.KeyboardInlineButtonRow{{
+			Buttons: []tg.KeyboardInlineButton{{Text: "run", Type: &tg.InlineButtonTypeCallback{Data: []byte("id=7")}}},
 		}}},
 	}
 	peer := PeerInfo{ChatID: -1_001_583_113_861, PeerID: 1_583_113_861, Name: "Source", Type: "supergroup"}

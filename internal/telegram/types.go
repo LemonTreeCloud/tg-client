@@ -106,21 +106,19 @@ func ExtractButtons(markup tg.ReplyMarkupClass) []ButtonInfo {
 	for _, row := range inline.Rows {
 		for _, button := range row.Buttons {
 			var item ButtonInfo
-			switch b := button.(type) {
-			case *tg.KeyboardButtonURL:
-				item = ButtonInfo{Text: b.Text, Type: "url", Value: b.URL}
-			case *tg.KeyboardButtonURLAuth:
-				item = ButtonInfo{Text: b.Text, Type: "url_auth", Value: b.URL}
-			case *tg.KeyboardButtonCallback:
-				item = ButtonInfo{Text: b.Text, Type: "callback_data", Value: printableBytes(b.Data)}
-			case *tg.KeyboardButtonSwitchInline:
-				item = ButtonInfo{Text: b.Text, Type: "switch_inline_query", Value: b.Query}
-			case *tg.KeyboardButtonWebView:
-				item = ButtonInfo{Text: b.Text, Type: "web_app", Value: b.URL}
-			case *tg.KeyboardButtonSimpleWebView:
-				item = ButtonInfo{Text: b.Text, Type: "web_app", Value: b.URL}
-			case *tg.KeyboardButtonCopy:
-				item = ButtonInfo{Text: b.Text, Type: "copy_text", Value: b.CopyText}
+			switch b := button.Type.(type) {
+			case *tg.InlineButtonTypeURL:
+				item = ButtonInfo{Text: button.Text, Type: "url", Value: b.URL}
+			case *tg.InlineButtonTypeURLAuth:
+				item = ButtonInfo{Text: button.Text, Type: "url_auth", Value: b.URL}
+			case *tg.InlineButtonTypeCallback:
+				item = ButtonInfo{Text: button.Text, Type: "callback_data", Value: printableBytes(b.Data)}
+			case *tg.InlineButtonTypeSwitchInline:
+				item = ButtonInfo{Text: button.Text, Type: "switch_inline_query", Value: b.Query}
+			case *tg.InlineButtonTypeWebView:
+				item = ButtonInfo{Text: button.Text, Type: "web_app", Value: b.URL}
+			case *tg.InlineButtonTypeCopy:
+				item = ButtonInfo{Text: button.Text, Type: "copy_text", Value: b.CopyText}
 			default:
 				continue
 			}
